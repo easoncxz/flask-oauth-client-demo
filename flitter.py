@@ -7,24 +7,46 @@ from flask import Flask, render_template, redirect, url_for, abort
 from flask import request, session
 
 from utils import login_required
+from twitter_stuff import twitter
 
 app = Flask(__name__)
 
 @app.route('/')
 @login_required
 def index():
-    username = session['user']['name']
+    at, ats = session['user']['twitter_credentials']
+    oauth_sess = twitter.get_session(token=(at, ats))
+    resp = oauth_sess.get('account/verify_credentials.json')
+    screen_name = resp.json()['screen_name']
     return render_template('home.html',
-            user=dict(display_name=username))
+            user=dict(
+                screen_name=screen_name,
+                at=at,
+                ats=ats))
 
-@app.route('/login/', methods=['GET', 'POST'])
+@app.route('/login/')
 def login():
-    if request.method == 'GET':
-        return render_template('login.html')
-    elif request.method == 'POST':
-        username = request.form['username']
-        session['user'] = dict(name=username)
-        return redirect(request.args.get('next', '/'))
+    rt, rts = twitter.get_request_token(
+            data={'oauth_callback': url_for(
+                    'oauth_callback',
+                    _external=True)})
+    session['twitter_temporary_credentials'] = rt, rts
+    return redirect(twitter.get_authorize_url(rt))
+
+@app.route('/oauth_callback/')
+def oauth_callback():
+    rt = request.args.get('oauth_token')
+    veri = request.args.get('oauth_verifier')
+    if rt is None or veri is None:
+        abort(404)
+    rt_, rts = session['twitter_temporary_credentials']
+    assert rt == rt_
+    at, ats = twitter.get_access_token(rt, rts, method="POST",
+            data={'oauth_verifier': veri})
+    del session['twitter_temporary_credentials']
+    session['user'] = dict(twitter_credentials=(at, ats))
+    # Hacky: Should redirect back to original url!
+    return redirect(url_for('index'))
 
 @app.route('/logout/')
 def logout():

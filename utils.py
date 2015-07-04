@@ -8,7 +8,7 @@ def login_required(view):
     @wraps(view)
     def wrapper(*args, **kwargs):
         if not 'user' in session:
-            return redirect(url_for('login', next=request.url))
+            return redirect(url_for('login'))
         else:
             return view(*args, **kwargs)
     return wrapper

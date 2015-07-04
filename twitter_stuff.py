@@ -10,4 +10,4 @@ twitter = OAuth1Service(
     access_token_url='https://api.twitter.com/oauth/access_token',
     authorize_url='https://api.twitter.com/oauth/authorize',
     request_token_url='https://api.twitter.com/oauth/request_token',
-    base_url='https://api.twitter.com/1/')
+    base_url='https://api.twitter.com/1.1/')
